@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "motostat-to-spritmonitor"
+version = "0.1.0"
+description = "Converter from motostat to stritmonitor"
+authors = ["Jacek Kotlarski <szumak@virthost.pl>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+jsktoolbox = "^1.0.18"
+
+[tool.poetry.group.dev.dependencies]
+black = "^24.8.0"
+pytest = "^8.3.2"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
