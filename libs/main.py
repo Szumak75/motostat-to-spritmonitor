@@ -32,6 +32,7 @@ from jsktoolbox.logstool.formatters import LogFormatterNull, LogFormatterDateTim
 from jsktoolbox.libs.system import Env
 
 from libs.base import BaseApp, BDebug, BVerbose
+from libs.processor import CsvProcessor
 
 
 class Converter(BaseApp, BDebug, BVerbose):
@@ -76,14 +77,30 @@ class Converter(BaseApp, BDebug, BVerbose):
         # logger processor
         self.logs_processor.start()
 
+        # init variables
+        comms_queue: Queue = Queue()
+
+        # CsvProcessor
+        csv_proc = CsvProcessor(
+            logger_queue=(
+                self.logs.logs_queue
+                if self.logs and self.logs.logs_queue
+                else LoggerQueue()
+            ),
+            comms_queue=comms_queue,
+            debug=self.debug,
+            verbose=self.verbose,
+        )
+        # starting CsvProcessor
+        csv_proc.start()
+
         # main procedure
         if not os.isatty(sys.stdin.fileno()):
-            while True:
+            while not self.stop:
                 line = sys.stdin.readline()
                 if line == "":
                     break
-                self.logs.message_info = f"{line}"
-
+                comms_queue.put(line)
         else:
             self.logs.message_info = "Application can read only from STDIN pipe"
             self.logs.message_info = "Example of usage:"
@@ -91,6 +108,12 @@ class Converter(BaseApp, BDebug, BVerbose):
 
         # exit
         time.sleep(1)
+
+        # stop CsvProcessor
+        csv_proc.stop()
+        while csv_proc.is_alive():
+            time.sleep(0.1)
+        csv_proc.join()
 
         # logger processor
         self.logs_processor.stop()
