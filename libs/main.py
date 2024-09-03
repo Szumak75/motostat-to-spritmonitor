@@ -96,11 +96,15 @@ class Converter(BaseApp, BDebug, BVerbose):
 
         # main procedure
         if not os.isatty(sys.stdin.fileno()):
+            line: str = ""
             while not self.stop:
-                line = sys.stdin.readline()
+                line += sys.stdin.readline()
                 if line == "":
                     break
-                comms_queue.put(line)
+                # print(line)
+                if not line.endswith("\r\n"):
+                    comms_queue.put(line)
+                    line = ""
         else:
             self.logs.message_info = "Application can read only from STDIN pipe"
             self.logs.message_info = "Example of usage:"

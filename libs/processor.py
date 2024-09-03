@@ -73,6 +73,9 @@ class CsvProcessor(Thread, ThBaseObject, BLogs, BStop, BVerbose, BDebug):
             self.logs.message_critical = f"Communication queue was not set properly."
             return None
 
+        # data
+        data: List[MotoStat] = []
+
         # main loop
         while True:
             if self.__comms_queue.empty() and self._stop_event.is_set():
@@ -82,9 +85,23 @@ class CsvProcessor(Thread, ThBaseObject, BLogs, BStop, BVerbose, BDebug):
                 line: str = self.__comms_queue.get(block=False)
                 item = MotoStat(line.strip())
                 if not item.is_empty:
-                    print(item)
+                    data.append(item)
             except Empty:
                 time.sleep(0.1)
+
+        # processing data
+        if data:
+            last: int = 0
+            trip: int = 0
+            self.logs.message_info = f"Found: {len(data)} records."
+            # print(sorted(data))
+            for item in sorted(data):
+                if last > 0:
+                    trip = int(item.odometer) - last
+                last = int(item.odometer)
+                print(
+                    f"{item.cost_id}{item.fueling_id}: odometer: {item.odometer}, {item.trip_odometer} - calc: {trip}"
+                )
 
         # exit
         if self.debug:
