@@ -469,9 +469,15 @@ class SpritMonitor(BDebug, BVerbose):
             "full": "1",
             "partial": "2",
         }
+        if float(item.trip_odometer) == 0:
+            data["Type"] = "3"
+        else:
+            data["Type"] = fueling_dict[item.fueling_type]
         # "Tires",
         # Tires: 1=summer tires, 2=winter tires, 3=all-year tires
         tires_dict: Dict[str, str] = {"full_year": "3", "summer": "1", "winter": "2"}
+        if item.tires in tires_dict.keys():
+            data["Tires"] = tires_dict[item.tires]
 
         # "Roads",
         # Roads: Sum of 2=motor-way, 4=city, 8=country roads (e.g., motor-way and country roads: 10)
@@ -479,6 +485,7 @@ class SpritMonitor(BDebug, BVerbose):
         # "Driving style",
         # Driving style: 1=moderate, 2=normal, 3=fast
         driving_dict: Dict[str, str] = {"normal": "2", "speedy": "3", "economical": "1"}
+        data["Driving style"] = driving_dict[item.driving_style]
 
         # "Fuel",
         # Fuel sort: 1=Diesel, 2=Biodiesel, 3=Vegetable oil, 4=Premium Diesel,
@@ -496,7 +503,20 @@ class SpritMonitor(BDebug, BVerbose):
             "inna benzyna": "6",
             "Super Plus 98": "8",
             "Shell V-Power": "18",
+            '"Eurosuper 95"': "6",
+            '"Statoil SupraGaz"': "18",
+            '"LPG"': "12",
+            '"inny gaz LPG"': "12",
+            '"CNG"': "14",
+            '"95 miles"': "6",
+            '"inna benzyna"': "6",
+            '"Super Plus 98"': "8",
+            '"Shell V-Power"': "18",
         }
+        print(f"FN: {item.fuel_name}")
+        print(f"{item.fuel_name in fuel_dict}")
+        if item.fuel_name in fuel_dict.keys():
+            data["Fuel"] = fuel_dict[item.fuel_name]
         # "Note",
         data["Note"] = item.notes
         # "Consumption",
@@ -572,7 +592,7 @@ class SpritMonitor(BDebug, BVerbose):
         # 19=Toll,
         # 20=Spare parts,
         # 21=Basic charging fee
-        if item.cost_type in trans:
+        if item.cost_type in trans.keys():
             data["Cost type"] = trans[item.cost_type]
         else:
             data["Cost type"] = "11"
