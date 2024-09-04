@@ -25,6 +25,7 @@ class _Keys(object, metaclass=ReadOnlyClass):
     COMMAND_LINE_OPTS: str = "__clo__"
     DEBUG: str = "__debug__"
     LOGGER_CLIENT: str = "__logger_client__"
+    MILES: str = "__miles__"
     PROC_LOGS: str = "__logger_processor__"
     SET_STOP: str = "__set_stop__"
     VERBOSE: str = "__verbose__"
@@ -94,6 +95,22 @@ class BStop(BData):
     def stop(self, flag: bool) -> None:
         """Sets STOP flag."""
         self._set_data(key=_Keys.SET_STOP, value=flag)
+
+
+class BMiles(BData):
+    """Base class for MILES flag."""
+
+    @property
+    def miles(self) -> bool:
+        """Returns miles flag."""
+        return self._get_data(
+            key=_Keys.MILES, set_default_type=bool, default_value=False
+        )  # type: ignore
+
+    @miles.setter
+    def miles(self, value: bool) -> None:
+        """Sets miles flag."""
+        self._set_data(key=_Keys.MILES, set_default_type=bool, value=value)
 
 
 class BaseApp(BLogs, BStop):

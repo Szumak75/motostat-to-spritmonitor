@@ -31,11 +31,11 @@ from jsktoolbox.logstool.logs import (
 from jsktoolbox.logstool.formatters import LogFormatterNull, LogFormatterDateTime
 from jsktoolbox.libs.system import Env
 
-from libs.base import BaseApp, BDebug, BVerbose
+from libs.base import BMiles, BaseApp, BDebug, BVerbose
 from libs.processor import CsvProcessor
 
 
-class Converter(BaseApp, BDebug, BVerbose):
+class Converter(BaseApp, BMiles, BDebug, BVerbose):
     """Main class."""
 
     def __init__(self) -> None:
@@ -90,6 +90,7 @@ class Converter(BaseApp, BDebug, BVerbose):
             comms_queue=comms_queue,
             debug=self.debug,
             verbose=self.verbose,
+            miles=self.miles,
         )
         # starting CsvProcessor
         csv_proc.start()
@@ -141,6 +142,7 @@ class Converter(BaseApp, BDebug, BVerbose):
         parser.configure_argument("h", "help", "this information.")
         parser.configure_argument("d", "debug", "debug flag for debugging.")
         parser.configure_argument("v", "verbose", "verbose flag.")
+        parser.configure_argument("m", "miles", "mileage in miles.")
 
         # command line parsing
         parser.parse_arguments()
@@ -154,6 +156,8 @@ class Converter(BaseApp, BDebug, BVerbose):
         if parser.get_option("verbose") is not None:
             # set verbose flag
             self.verbose = True
+        if parser.get_option("miles") is not None:
+            self.miles = True
 
     def __init_log_levels(self, engine: LoggerEngine) -> None:
         """Set logging levels configuration for LoggerEngine."""

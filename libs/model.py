@@ -13,6 +13,8 @@ from typing import Any, Iterable, Mapping, Optional, List, Tuple, Dict, TypeVar,
 from threading import Event, Thread
 from inspect import currentframe
 from queue import Queue, Empty
+from datetime import datetime
+
 
 from jsktoolbox.attribtool import ReadOnlyClass
 from jsktoolbox.logstool.logs import LoggerClient, LoggerQueue
@@ -23,7 +25,7 @@ from jsktoolbox.devices.network.connectors import API
 from jsktoolbox.devices.mikrotik.routerboard import RouterBoard
 from jsktoolbox.datetool import Timestamp
 
-from libs.base import BDebug, BVerbose, BLogs, BStop
+from libs.base import BDebug, BMiles, BVerbose, BLogs, BStop
 
 TMotoStat = TypeVar("TMotoStat", bound="MotoStat")
 
@@ -32,13 +34,15 @@ class _Keys(object, metaclass=ReadOnlyClass):
     """Internal keys class."""
 
     DATA: str = "__data__"
+    FUELING: str = "__fueling__"
 
 
-class MotoStat(BDebug, BVerbose):
+class MotoStat(BDebug, BVerbose, BMiles):
     """MotoStat data class."""
 
-    def __init__(self, csv_line: str) -> None:
+    def __init__(self, csv_line: str, miles: bool = False) -> None:
         """Constructor."""
+        self.miles = miles
         data_dict: Dict[str, Any] = {}
         csv_header: List[str] = [
             "cost_id",
@@ -163,6 +167,12 @@ class MotoStat(BDebug, BVerbose):
     def odometer(self) -> str:
         if self._get_data(key=_Keys.DATA, default_value={}):
             out: str = self._get_data(key=_Keys.DATA)["odometer"]  # type: ignore
+            if out:
+                if self.miles:
+                    x: float = float(out) * 0.621371192
+                    return f"{x:.0f}"
+                else:
+                    return out
             return out
         else:
             return ""
@@ -172,6 +182,12 @@ class MotoStat(BDebug, BVerbose):
     def trip_odometer(self) -> str:
         if self._get_data(key=_Keys.DATA, default_value={}):
             out: str = self._get_data(key=_Keys.DATA)["trip_odometer"]  # type: ignore
+            if out:
+                if self.miles:
+                    x: float = float(out) * 0.621371192
+                    return f"{round(x,0):.0f}"
+                else:
+                    return f"{float(out):.0f}"
             return out
         else:
             return ""
@@ -311,6 +327,14 @@ class MotoStat(BDebug, BVerbose):
         else:
             return ""
 
+    @property
+    def gas(self) -> bool:
+        """Returns True if fuel is LPG/CNG."""
+        if self.fuel_name:
+            if "LPG" in self.fuel_name or "CNG" in self.fuel_name:
+                return True
+        return False
+
     def __eq__(self, arg: TMotoStat) -> bool:
         """Equal."""
         return self.date == arg.date
@@ -337,10 +361,246 @@ class MotoStat(BDebug, BVerbose):
 
 
 class SpritMonitor(BDebug, BVerbose):
-    """SpritMonitor converter class."""
+    """SpritMonitor converter class.
+
+    ### Fuelings CSV
+        Date: Format DD.MM.YYYY (e.g., 23.02.2010)
+        Odometer, distance, quantity, total price: Numeric without thousands separator
+        Currency: Standard abbreviation (e.g., EUR, USD)
+        Fueling type: 0=invalid fueling, 1=full fueling, 2=partial fueling, 3=first fueling
+        Tires: 1=summer tires, 2=winter tires, 3=all-year tires
+        Roads: Sum of 2=motor-way, 4=city, 8=country roads (e.g., motor-way and country roads: 10)
+        Driving style: 1=moderate, 2=normal, 3=fast
+        Fuel sort: 1=Diesel, 2=Biodiesel, 3=Vegetable oil, 4=Premium Diesel, 6=Normal gasoline, 7=Super gasoline, 8=SuperPlus gasoline, 9=Premium Gasoline 100, 12=LPG, 13=CNG H, 14=CNG L, 15=Bio-alcohol, 16=Two-stroke, 18=Premium Gasoline 95, 19=Electricity, 20=E10, 21=AdBlue, 22=Premium Gasoline 100+, 23=Hydrogen, 24=Green electricity, 25=GTL Diesel, 26=HVO100
+        Note: Text
+        Consumption, BC-consumption, BC-quantity, BC-speed: Numeric without thousands separator
+        Company, Country, Area, Location: Text
+
+    ### Costs CSV
+        Date: Format DD.MM.YYYY (e.g., 23.02.2010)
+        Odometer, trip: Numeric without thousands separator
+        Type:: 1=Maintenance, 2=Repair, 3=Change tires, 4=Change oil, 5=Insurance, 6=Tax, 7=Supervisory board, 8=Tuning, 9=Accessories, 10=Purchase price, 11=Miscellaneous, 12=Care, 13=Payment, 14=Registration, 15=Financing, 16=Refund, 17=Fine, 18=Parking tax, 19=Toll, 20=Spare parts, 21=Basic charging fee
+        Note: Text
+
+    """
 
     def __init__(self, item: MotoStat) -> None:
         """Constructor."""
+        fueling_header: List[str] = [
+            "Date",
+            "Odometer",
+            "Trip",
+            "Quantity",
+            "Total price",
+            "Currency",
+            "Type",
+            "Tires",
+            "Roads",
+            "Driving style",
+            "Fuel",
+            "Note",
+            "Consumption",
+            "BC-Consumption",
+            "BC-Quantity",
+            "BC-Speed",
+            "Company",
+            "Country",
+            "Area",
+            "Location",
+        ]
+        cost_header: List[str] = [
+            "Date",
+            "Odometer",
+            "Cost type",
+            "Total price",
+            "Currency",
+            "Note",
+        ]
+        if item.cost_id:
+            # new cost
+            self.fueling = False
+            data: Dict[str, str] = {}
+            for key in cost_header:
+                data[key] = ""
+            self._set_data(key=_Keys.DATA, set_default_type=Dict, value=data)
+            self.__add_cost(item)
+        if item.fuel_id:
+            self.fueling = True
+            data: Dict[str, str] = {}
+            for key in fueling_header:
+                data[key] = ""
+            self._set_data(key=_Keys.DATA, set_default_type=Dict, value=data)
+            self.__add_fueling(item)
+
+    def __repr__(self) -> str:
+        tmp = ""
+        for i, v in self._get_data(key=_Keys.DATA).items():  # type: ignore
+            tmp += f"'{i}':{v},"
+        return f"{self._c_name}({tmp})"
+
+    def __add_fueling(self, item: MotoStat) -> None:
+        """Add data to dict."""
+        print(item)
+        data: Dict[str, str] = self._get_data(
+            key=_Keys.DATA,
+        )  # type: ignore
+        # "Date",
+        date_tmp = datetime.fromtimestamp(item.date)
+        data["Date"] = f"{date_tmp.day:02d}.{date_tmp.month:02d}.{date_tmp.year}"
+        # "Odometer",
+        tmp = item.odometer
+        if tmp == "0":
+            tmp = "0,00"
+        else:
+            tmp += ",00"
+        data["Odometer"] = tmp
+        # "Trip",
+        data["Trip"] = item.trip_odometer.replace(".", ",")
+        # "Quantity",
+        data["Quantity"] = item.quantity.replace(".", ",")
+        # "Total price",
+        data["Total price"] = item.cost.replace(".", ",")
+        # "Currency",
+        data["Currency"] = item.currency
+
+        # "Type",
+        # Fueling type: 0=invalid fueling, 1=full fueling, 2=partial fueling, 3=first fueling
+        fueling_dict: Dict[str, str] = {
+            "full": "1",
+            "partial": "2",
+        }
+        # "Tires",
+        # Tires: 1=summer tires, 2=winter tires, 3=all-year tires
+        tires_dict: Dict[str, str] = {"full_year": "3", "summer": "1", "winter": "2"}
+
+        # "Roads",
+        # Roads: Sum of 2=motor-way, 4=city, 8=country roads (e.g., motor-way and country roads: 10)
+
+        # "Driving style",
+        # Driving style: 1=moderate, 2=normal, 3=fast
+        driving_dict: Dict[str, str] = {"normal": "2", "speedy": "3", "economical": "1"}
+
+        # "Fuel",
+        # Fuel sort: 1=Diesel, 2=Biodiesel, 3=Vegetable oil, 4=Premium Diesel,
+        # 6=Normal gasoline, 7=Super gasoline, 8=SuperPlus gasoline,
+        # 9=Premium Gasoline 100, 12=LPG, 13=CNG H, 14=CNG L, 15=Bio-alcohol,
+        # 16=Two-stroke, 18=Premium Gasoline 95, 19=Electricity, 20=E10, 21=AdBlue,
+        # 22=Premium Gasoline 100+, 23=Hydrogen, 24=Green electricity, 25=GTL Diesel, 26=HVO100
+        fuel_dict: Dict[str, str] = {
+            "Eurosuper 95": "6",
+            "Statoil SupraGaz": "18",
+            "LPG": "12",
+            "inny gaz LPG": "12",
+            "CNG": "14",
+            "95 miles": "6",
+            "inna benzyna": "6",
+            "Super Plus 98": "8",
+            "Shell V-Power": "18",
+        }
+        # "Note",
+        data["Note"] = item.notes
+        # "Consumption",
+        if float(item.trip_odometer) > 0:
+            tmp = float(item.quantity) * 100 / float(item.trip_odometer)
+            data["Consumption"] = f"{tmp:.2f}".replace(".", ",")
+
+        # "BC-Consumption",
+        # "BC-Quantity",
+        # "BC-Speed",
+        # "Company",
+        # "Country",
+        # "Area",
+        # "Location",
+        self._set_data(key=_Keys.DATA, value=data)
+        print(self._get_data(key=_Keys.DATA))
+
+    def __add_cost(self, item: MotoStat) -> None:
+        """Add data to dict."""
+        trans: Dict[str, str] = {
+            "maintenance": "1",
+            "repair": "2",
+            "tires_change": "3",
+            "oil_change": "4",
+            "insurance": "5",
+            "tax": "6",
+            "tuning": "8",
+            "accessories": "9",
+            "purchase_price": "10",
+            "miscellaneous": "11",
+            "tech_inspection": "11",
+            "car_audio": "9",
+            "inspection": "11",
+            "care": "12",
+            "registration": "14",
+            "fine": "17",
+            "parking_tax": "18",
+            "toll": "19",
+            "spare_parts": "20",
+        }
+        data: Dict[str, str] = self._get_data(
+            key=_Keys.DATA,
+        )  # type: ignore
+        # "Date",
+        date_tmp = datetime.fromtimestamp(item.date)
+        data["Date"] = f"{date_tmp.day:02d}.{date_tmp.month:02d}.{date_tmp.year}"
+        # "Odometer",
+        tmp = item.odometer
+        if tmp == "0":
+            tmp = "0,00"
+        else:
+            tmp += ",00"
+        data["Odometer"] = tmp
+        # "Cost type",
+        # Type:: 1=Maintenance,
+        # 2=Repair,
+        # 3=Change tires,
+        # 4=Change oil,
+        # 5=Insurance,
+        # 6=Tax,
+        # 7=Supervisory board,
+        # 8=Tuning,
+        # 9=Accessories,
+        # 10=Purchase price,
+        # 11=Miscellaneous,
+        # 12=Care,
+        # 13=Payment,
+        # 14=Registration,
+        # 15=Financing,
+        # 16=Refund,
+        # 17=Fine,
+        # 18=Parking tax,
+        # 19=Toll,
+        # 20=Spare parts,
+        # 21=Basic charging fee
+        if item.cost_type in trans:
+            data["Cost type"] = trans[item.cost_type]
+        else:
+            data["Cost type"] = "11"
+        # "Total price",
+        tmp = item.cost
+        if tmp == "0":
+            tmp = "0,00"
+        else:
+            tmp = tmp.replace(".", ",")
+        data["Total price"] = tmp
+        # "Currency",
+        data["Currency"] = item.currency
+        # "Note",
+        data["Note"] = item.notes
+        self._set_data(key=_Keys.DATA, value=data)
+        # print(self._get_data(key=_Keys.DATA))
+
+    @property
+    def fueling(self) -> bool:
+        """Returns FUELING flag."""
+        return self._get_data(
+            key=_Keys.FUELING, set_default_type=bool, default_value=False
+        )  # type: ignore
+
+    @fueling.setter
+    def fueling(self, value: bool) -> None:
+        """Sets fueling flag."""
+        self._set_data(key=_Keys.FUELING, set_default_type=bool, value=value)
 
 
 # #[EOF]#######################################################################

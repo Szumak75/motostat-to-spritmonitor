@@ -24,8 +24,8 @@ from jsktoolbox.devices.network.connectors import API
 from jsktoolbox.devices.mikrotik.routerboard import RouterBoard
 from jsktoolbox.datetool import Timestamp
 
-from libs.base import BDebug, BVerbose, BLogs, BStop
-from libs.model import MotoStat
+from libs.base import BDebug, BMiles, BVerbose, BLogs, BStop
+from libs.model import MotoStat, SpritMonitor
 
 
 class _Keys(object, metaclass=ReadOnlyClass):
@@ -34,13 +34,14 @@ class _Keys(object, metaclass=ReadOnlyClass):
     QUEUE: str = "__comms_queue__"
 
 
-class CsvProcessor(Thread, ThBaseObject, BLogs, BStop, BVerbose, BDebug):
+class CsvProcessor(Thread, ThBaseObject, BLogs, BStop, BMiles, BVerbose, BDebug):
     """Csv data processor class."""
 
     def __init__(
         self,
         logger_queue: LoggerQueue,
         comms_queue: Queue,
+        miles: bool = False,
         verbose: bool = False,
         debug: bool = False,
     ) -> None:
@@ -49,6 +50,7 @@ class CsvProcessor(Thread, ThBaseObject, BLogs, BStop, BVerbose, BDebug):
         ### Arguments:
         - logger_queue [LoggerQueue] - logger queue for communication.
         - comms_queue [Queue] - communication queue.
+        - miles [bool] - mileage in miles flag.
         - debug [bool] - debug flag.
         - verbose [bool] - verbose flag.
         """
@@ -60,6 +62,8 @@ class CsvProcessor(Thread, ThBaseObject, BLogs, BStop, BVerbose, BDebug):
         self.debug = debug
         # verbose
         self.verbose = verbose
+        # miles
+        self.miles = miles
         # logger
         self.logs = LoggerClient(logger_queue, f"{self._c_name}")
         # communication queue
@@ -75,6 +79,7 @@ class CsvProcessor(Thread, ThBaseObject, BLogs, BStop, BVerbose, BDebug):
 
         # data
         data: List[MotoStat] = []
+        sprit: List[SpritMonitor] = []
 
         # main loop
         while True:
@@ -83,7 +88,7 @@ class CsvProcessor(Thread, ThBaseObject, BLogs, BStop, BVerbose, BDebug):
             try:
                 # getting data from queue
                 line: str = self.__comms_queue.get(block=False)
-                item = MotoStat(line.strip())
+                item = MotoStat(csv_line=line.strip(), miles=self.miles)
                 if not item.is_empty:
                     data.append(item)
             except Empty:
@@ -91,17 +96,32 @@ class CsvProcessor(Thread, ThBaseObject, BLogs, BStop, BVerbose, BDebug):
 
         # processing data
         if data:
-            last: int = 0
-            trip: int = 0
-            self.logs.message_info = f"Found: {len(data)} records."
-            # print(sorted(data))
+            # last: float = 0
+            # trip: float = 0
+            # last_gas: float = 0
+            # trip_gas: float = 0
+            # self.logs.message_info = f"Found: {len(data)} records."
+            # # print(sorted(data))
+            # for item in sorted(data):
+            #     if item.gas:
+            #         if last_gas > 0:
+            #             trip_gas = float(item.odometer) - last_gas
+            #         last_gas = float(item.odometer)
+            #     else:
+            #         if last > 0:
+            #             trip = float(item.odometer) - last
+            #         last = float(item.odometer)
+            #     if item.gas:
+            #         print(
+            #             f"{item.date}: {item.cost_id}{item.fueling_id}: odometer: {item.odometer}, {item.trip_odometer} - calc: {trip_gas}"
+            #         )
+            #     else:
+            #         print(
+            #             f"{item.date}: {item.cost_id}{item.fueling_id}: odometer: {item.odometer}, {item.trip_odometer} - calc: {trip}"
+            #         )
             for item in sorted(data):
-                if last > 0:
-                    trip = int(item.odometer) - last
-                last = int(item.odometer)
-                print(
-                    f"{item.cost_id}{item.fueling_id}: odometer: {item.odometer}, {item.trip_odometer} - calc: {trip}"
-                )
+                sprit.append(SpritMonitor(item))
+                # print(f"{SpritMonitor(item)}")
 
         # exit
         if self.debug:
