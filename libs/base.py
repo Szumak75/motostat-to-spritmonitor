@@ -24,6 +24,7 @@ class _Keys(object, metaclass=ReadOnlyClass):
 
     COMMAND_LINE_OPTS: str = "__clo__"
     DEBUG: str = "__debug__"
+    DIR: str = "__dir__"
     LOGGER_CLIENT: str = "__logger_client__"
     MILES: str = "__miles__"
     PROC_LOGS: str = "__logger_processor__"
@@ -111,6 +112,22 @@ class BMiles(BData):
     def miles(self, value: bool) -> None:
         """Sets miles flag."""
         self._set_data(key=_Keys.MILES, set_default_type=bool, value=value)
+
+
+class BDir(BData):
+    """Base class for output dir."""
+
+    @property
+    def output_dir(self) -> str:
+        """Returns output_dir str."""
+        return self._get_data(
+            key=_Keys.DIR, set_default_type=str, default_value="/tmp"
+        )  # type: ignore
+
+    @output_dir.setter
+    def output_dir(self, value: str) -> None:
+        """Sets output_dir str."""
+        self._set_data(key=_Keys.DIR, set_default_type=str, value=value)
 
 
 class BaseApp(BLogs, BStop):

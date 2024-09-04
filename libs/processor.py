@@ -7,7 +7,7 @@
   Purpose: 
 """
 
-import time
+import time, os
 
 from collections.abc import Callable
 from typing import Any, Iterable, Mapping, Optional, List, Tuple
@@ -24,7 +24,7 @@ from jsktoolbox.devices.network.connectors import API
 from jsktoolbox.devices.mikrotik.routerboard import RouterBoard
 from jsktoolbox.datetool import Timestamp
 
-from libs.base import BDebug, BMiles, BVerbose, BLogs, BStop
+from libs.base import BDebug, BDir, BMiles, BVerbose, BLogs, BStop
 from libs.model import MotoStat, SpritMonitor
 
 
@@ -34,7 +34,7 @@ class _Keys(object, metaclass=ReadOnlyClass):
     QUEUE: str = "__comms_queue__"
 
 
-class CsvProcessor(Thread, ThBaseObject, BLogs, BStop, BMiles, BVerbose, BDebug):
+class CsvProcessor(Thread, ThBaseObject, BLogs, BStop, BMiles, BVerbose, BDebug, BDir):
     """Csv data processor class."""
 
     def __init__(
@@ -79,7 +79,8 @@ class CsvProcessor(Thread, ThBaseObject, BLogs, BStop, BMiles, BVerbose, BDebug)
 
         # data
         data: List[MotoStat] = []
-        sprit: List[SpritMonitor] = []
+        sprit_fuels: List[SpritMonitor] = []
+        sprit_costs: List[SpritMonitor] = []
 
         # main loop
         while True:
@@ -96,36 +97,35 @@ class CsvProcessor(Thread, ThBaseObject, BLogs, BStop, BMiles, BVerbose, BDebug)
 
         # processing data
         if data:
-            # last: float = 0
-            # trip: float = 0
-            # last_gas: float = 0
-            # trip_gas: float = 0
-            # self.logs.message_info = f"Found: {len(data)} records."
-            # # print(sorted(data))
-            # for item in sorted(data):
-            #     if item.gas:
-            #         if last_gas > 0:
-            #             trip_gas = float(item.odometer) - last_gas
-            #         last_gas = float(item.odometer)
-            #     else:
-            #         if last > 0:
-            #             trip = float(item.odometer) - last
-            #         last = float(item.odometer)
-            #     if item.gas:
-            #         print(
-            #             f"{item.date}: {item.cost_id}{item.fueling_id}: odometer: {item.odometer}, {item.trip_odometer} - calc: {trip_gas}"
-            #         )
-            #     else:
-            #         print(
-            #             f"{item.date}: {item.cost_id}{item.fueling_id}: odometer: {item.odometer}, {item.trip_odometer} - calc: {trip}"
-            #         )
-            for item in sorted(data):
-                sprit.append(SpritMonitor(item))
-                # print(f"{SpritMonitor(item)}")
+            for item in sorted(data, reverse=True):
+                if item.cost_id:
+                    sprit_costs.append(SpritMonitor(item))
+                if item.fuel_id:
+                    sprit_fuels.append(SpritMonitor(item))
+            self.__write_costs(sprit_costs)
+            self.__write_fuels(sprit_fuels)
 
         # exit
         if self.debug:
             self.logs.message_debug = "stopped."
+
+    def __write_costs(self, data: List[SpritMonitor]) -> None:
+        """Write csv."""
+        csv_path: str = os.path.join(self.output_dir, "spritmonitor_costs.csv")
+        if data:
+            with open(csv_path, "w") as file:
+                file.write(f"{data[0].csv_header}\n")
+                for item in data:
+                    file.write(f"{item.csv_data}\n")
+
+    def __write_fuels(self, data: List[SpritMonitor]) -> None:
+        """Write csv."""
+        csv_path: str = os.path.join(self.output_dir, "spritmonitor_fuels.csv")
+        if data:
+            with open(csv_path, "w") as file:
+                file.write(f"{data[0].csv_header}\n")
+                for item in data:
+                    file.write(f"{item.csv_data}\n")
 
     def stop(self) -> None:
         """Sets stop event."""

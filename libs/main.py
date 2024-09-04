@@ -31,11 +31,11 @@ from jsktoolbox.logstool.logs import (
 from jsktoolbox.logstool.formatters import LogFormatterNull, LogFormatterDateTime
 from jsktoolbox.libs.system import Env
 
-from libs.base import BMiles, BaseApp, BDebug, BVerbose
+from libs.base import BDir, BMiles, BaseApp, BDebug, BVerbose
 from libs.processor import CsvProcessor
 
 
-class Converter(BaseApp, BMiles, BDebug, BVerbose):
+class Converter(BaseApp, BMiles, BDebug, BVerbose, BDir):
     """Main class."""
 
     def __init__(self) -> None:
@@ -92,6 +92,10 @@ class Converter(BaseApp, BMiles, BDebug, BVerbose):
             verbose=self.verbose,
             miles=self.miles,
         )
+
+        # set output dir
+        csv_proc.output_dir = self.output_dir
+
         # starting CsvProcessor
         csv_proc.start()
 
@@ -143,6 +147,13 @@ class Converter(BaseApp, BMiles, BDebug, BVerbose):
         parser.configure_argument("d", "debug", "debug flag for debugging.")
         parser.configure_argument("v", "verbose", "verbose flag.")
         parser.configure_argument("m", "miles", "mileage in miles.")
+        parser.configure_argument(
+            "o",
+            "output_dir",
+            "Output dir for exported csv.",
+            has_value=True,
+            example_value="/tmp",
+        )
 
         # command line parsing
         parser.parse_arguments()
@@ -158,6 +169,8 @@ class Converter(BaseApp, BMiles, BDebug, BVerbose):
             self.verbose = True
         if parser.get_option("miles") is not None:
             self.miles = True
+        if parser.get_option("output_dir") is not None:
+            self.output_dir = parser.get_option("output_dir")  # type: ignore
 
     def __init_log_levels(self, engine: LoggerEngine) -> None:
         """Set logging levels configuration for LoggerEngine."""

@@ -33,6 +33,8 @@ TMotoStat = TypeVar("TMotoStat", bound="MotoStat")
 class _Keys(object, metaclass=ReadOnlyClass):
     """Internal keys class."""
 
+    CSV_COST: str = "__cost__"
+    CSV_FUEL: str = "__fuel__"
     DATA: str = "__data__"
     FUELING: str = "__fueling__"
 
@@ -185,9 +187,9 @@ class MotoStat(BDebug, BVerbose, BMiles):
             if out:
                 if self.miles:
                     x: float = float(out) * 0.621371192
-                    return f"{round(x,0):.0f}"
+                    return f"{round(x,0):.2f}"
                 else:
-                    return f"{float(out):.0f}"
+                    return f"{float(out):.2f}"
             return out
         else:
             return ""
@@ -314,7 +316,7 @@ class MotoStat(BDebug, BVerbose, BMiles):
     def fuel_name(self) -> str:
         if self._get_data(key=_Keys.DATA, default_value={}):
             out: str = self._get_data(key=_Keys.DATA)["fuel_name"]  # type: ignore
-            return out
+            return out.strip('"')
         else:
             return ""
 
@@ -408,6 +410,8 @@ class SpritMonitor(BDebug, BVerbose):
             "Area",
             "Location",
         ]
+        self._set_data(key=_Keys.CSV_FUEL, set_default_type=List, value=fueling_header)
+
         cost_header: List[str] = [
             "Date",
             "Odometer",
@@ -416,6 +420,8 @@ class SpritMonitor(BDebug, BVerbose):
             "Currency",
             "Note",
         ]
+        self._set_data(key=_Keys.CSV_COST, set_default_type=List, value=cost_header)
+
         if item.cost_id:
             # new cost
             self.fueling = False
@@ -440,7 +446,6 @@ class SpritMonitor(BDebug, BVerbose):
 
     def __add_fueling(self, item: MotoStat) -> None:
         """Add data to dict."""
-        print(item)
         data: Dict[str, str] = self._get_data(
             key=_Keys.DATA,
         )  # type: ignore
@@ -481,6 +486,14 @@ class SpritMonitor(BDebug, BVerbose):
 
         # "Roads",
         # Roads: Sum of 2=motor-way, 4=city, 8=country roads (e.g., motor-way and country roads: 10)
+        count = 0
+        if float(item.route_city) > 0:
+            count += 4
+        if float(item.route_motorway) > 0:
+            count += 2
+        if float(item.route_country) > 0:
+            count += 8
+        data["Roads"] = f"{count}"
 
         # "Driving style",
         # Driving style: 1=moderate, 2=normal, 3=fast
@@ -513,12 +526,10 @@ class SpritMonitor(BDebug, BVerbose):
             '"Super Plus 98"': "8",
             '"Shell V-Power"': "18",
         }
-        print(f"FN: {item.fuel_name}")
-        print(f"{item.fuel_name in fuel_dict}")
         if item.fuel_name in fuel_dict.keys():
             data["Fuel"] = fuel_dict[item.fuel_name]
         # "Note",
-        data["Note"] = item.notes
+        data["Note"] = f'"{item.notes}"'
         # "Consumption",
         if float(item.trip_odometer) > 0:
             tmp = float(item.quantity) * 100 / float(item.trip_odometer)
@@ -528,15 +539,20 @@ class SpritMonitor(BDebug, BVerbose):
         # "BC-Quantity",
         # "BC-Speed",
         # "Company",
+        data["Company"] = f'"{item.gas_station_name}"'
         # "Country",
+        if item.currency == "PLN":
+            data["Country"] = '"PL"'
         # "Area",
+        data["Area"] = '""'
         # "Location",
+        data["Location"] = '""'
         self._set_data(key=_Keys.DATA, value=data)
-        print(self._get_data(key=_Keys.DATA))
+        # print(self._get_data(key=_Keys.DATA))
 
     def __add_cost(self, item: MotoStat) -> None:
         """Add data to dict."""
-        trans: Dict[str, str] = {
+        cost_type: Dict[str, str] = {
             "maintenance": "1",
             "repair": "2",
             "tires_change": "3",
@@ -561,7 +577,7 @@ class SpritMonitor(BDebug, BVerbose):
             key=_Keys.DATA,
         )  # type: ignore
         # "Date",
-        date_tmp = datetime.fromtimestamp(item.date)
+        date_tmp: datetime = datetime.fromtimestamp(item.date)
         data["Date"] = f"{date_tmp.day:02d}.{date_tmp.month:02d}.{date_tmp.year}"
         # "Odometer",
         tmp = item.odometer
@@ -592,8 +608,8 @@ class SpritMonitor(BDebug, BVerbose):
         # 19=Toll,
         # 20=Spare parts,
         # 21=Basic charging fee
-        if item.cost_type in trans.keys():
-            data["Cost type"] = trans[item.cost_type]
+        if item.cost_type in cost_type.keys():
+            data["Cost type"] = cost_type[item.cost_type]
         else:
             data["Cost type"] = "11"
         # "Total price",
@@ -604,9 +620,12 @@ class SpritMonitor(BDebug, BVerbose):
             tmp = tmp.replace(".", ",")
         data["Total price"] = tmp
         # "Currency",
-        data["Currency"] = item.currency
+        data["Currency"] = f'"{item.currency}"'
         # "Note",
-        data["Note"] = item.notes
+        if item.notes:
+            data["Note"] = item.notes
+        else:
+            data["Note"] = '""'
         self._set_data(key=_Keys.DATA, value=data)
         # print(self._get_data(key=_Keys.DATA))
 
@@ -621,6 +640,37 @@ class SpritMonitor(BDebug, BVerbose):
     def fueling(self, value: bool) -> None:
         """Sets fueling flag."""
         self._set_data(key=_Keys.FUELING, set_default_type=bool, value=value)
+
+    @property
+    def header(self) -> List[str]:
+        """Returns csv header string."""
+        length: int = len(self._get_data(key=_Keys.DATA).keys())  # type: ignore
+        if len(self._get_data(key=_Keys.CSV_COST)) == length:  # type: ignore
+            return self._get_data(key=_Keys.CSV_COST)  # type: ignore
+        else:
+            return self._get_data(key=_Keys.CSV_FUEL)  # type: ignore
+
+    @property
+    def csv_header(self) -> str:
+        """Returns csv header"""
+        tmp: str = ""
+        for item in self.header:
+            if tmp == "":
+                tmp += item
+            else:
+                tmp += f";{item}"
+        return tmp
+
+    @property
+    def csv_data(self) -> str:
+        """Returns csv header"""
+        tmp: str = ""
+        for item in self.header:
+            if tmp == "":
+                tmp += self._get_data(key=_Keys.DATA)[item]  # type: ignore
+            else:
+                tmp += f";{self._get_data(key=_Keys.DATA)[item]}"  # type: ignore
+        return tmp
 
 
 # #[EOF]#######################################################################
