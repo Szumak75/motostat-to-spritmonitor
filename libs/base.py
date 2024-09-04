@@ -9,14 +9,11 @@
 
 import sys
 
-from typing import List, Dict, Optional, Any
-from inspect import currentframe
+from typing import List, Dict
 
 from jsktoolbox.libs.base_data import BData
 from jsktoolbox.attribtool import ReadOnlyClass
-from jsktoolbox.configtool.main import Config as ConfigTool
 from jsktoolbox.logstool.logs import LoggerClient, ThLoggerProcessor
-from jsktoolbox.raisetool import Raise
 
 
 class _Keys(object, metaclass=ReadOnlyClass):

@@ -9,23 +9,14 @@
 
 import re
 
-from typing import Any, Iterable, Mapping, Optional, List, Tuple, Dict, TypeVar, Union
-from threading import Event, Thread
-from inspect import currentframe
-from queue import Queue, Empty
+from typing import Any, List, Dict, TypeVar
 from datetime import datetime
 
 
 from jsktoolbox.attribtool import ReadOnlyClass
-from jsktoolbox.logstool.logs import LoggerClient, LoggerQueue
-from jsktoolbox.libs.base_th import ThBaseObject
-from jsktoolbox.netaddresstool.ipv4 import Address, Network
-from jsktoolbox.raisetool import Raise
-from jsktoolbox.devices.network.connectors import API
-from jsktoolbox.devices.mikrotik.routerboard import RouterBoard
 from jsktoolbox.datetool import Timestamp
 
-from libs.base import BDebug, BMiles, BVerbose, BLogs, BStop
+from libs.base import BDebug, BMiles, BVerbose
 
 TMotoStat = TypeVar("TMotoStat", bound="MotoStat")
 

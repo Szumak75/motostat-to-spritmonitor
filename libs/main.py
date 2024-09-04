@@ -10,15 +10,10 @@
 from queue import Queue
 import os, sys, time, signal
 
-from inspect import currentframe
-from typing import Optional, List
+from typing import Optional
 
 
-from jsktoolbox.libs.base_data import BData
-from jsktoolbox.libs.system import CommandLineParser, PathChecker
-from jsktoolbox.attribtool import ReadOnlyClass
-from jsktoolbox.datetool import Timestamp, DateTime
-from jsktoolbox.raisetool import Raise
+from jsktoolbox.libs.system import CommandLineParser
 from jsktoolbox.logstool.logs import (
     LoggerEngine,
     LoggerClient,
@@ -29,7 +24,6 @@ from jsktoolbox.logstool.logs import (
     ThLoggerProcessor,
 )
 from jsktoolbox.logstool.formatters import LogFormatterNull, LogFormatterDateTime
-from jsktoolbox.libs.system import Env
 
 from libs.base import BDir, BMiles, BaseApp, BDebug, BVerbose
 from libs.processor import CsvProcessor
