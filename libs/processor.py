@@ -16,6 +16,7 @@ from queue import Queue, Empty
 from jsktoolbox.attribtool import ReadOnlyClass
 from jsktoolbox.logstool.logs import LoggerClient, LoggerQueue
 from jsktoolbox.libs.base_th import ThBaseObject
+from jsktoolbox.libs.system import PathChecker
 
 from libs.base import BDebug, BDir, BMiles, BVerbose, BLogs, BStop
 from libs.model import MotoStat, SpritMonitor
@@ -69,6 +70,23 @@ class CsvProcessor(Thread, ThBaseObject, BLogs, BStop, BMiles, BVerbose, BDebug,
         if not self.__comms_queue:
             self.logs.message_critical = f"Communication queue was not set properly."
             return None
+
+        # check output dir
+        out_dir = PathChecker(f"{self.output_dir}/")
+        if out_dir.exists and out_dir.is_dir:
+            pass
+        else:
+            if not out_dir.exists:
+                if not out_dir.create():
+                    self.logs.message_error = (
+                        f"Cannot create output directory: '{self.output_dir}', exiting."
+                    )
+                    return
+            if out_dir.is_file:
+                self.logs.message_error = (
+                    f"Output dir: '{self.output_dir}' existing and is a file, exiting."
+                )
+                return
 
         # data
         data: List[MotoStat] = []
