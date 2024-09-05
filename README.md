@@ -19,9 +19,10 @@ A project for converting csv files from https://www.motostat.pl to csv files in 
 - python3 -mvenv .venv
 - source .venv/bin/activate
 - pip install -r requirements.txt
+- deactivate
 - cd
 
-## Usage
+## Example of usage
 
 $ cat motostat82522.csv|motostat-to-spritmonitor
 
