@@ -94,6 +94,7 @@ class CsvProcessor(Thread, ThBaseObject, BLogs, BStop, BMiles, BVerbose, BDebug,
         sprit_costs: List[SpritMonitor] = []
 
         # main loop
+        count: int = 0
         while True:
             if self.__comms_queue.empty() and self._stop_event.is_set():
                 break
@@ -101,6 +102,9 @@ class CsvProcessor(Thread, ThBaseObject, BLogs, BStop, BMiles, BVerbose, BDebug,
                 # getting data from queue
                 line: str = self.__comms_queue.get(block=False)
                 item = MotoStat(csv_line=line.strip(), miles=self.miles)
+                count += 1
+                if self.debug:
+                    self.logs.message_debug = f"Item {count:03d}: {item}"
                 if not item.is_empty:
                     data.append(item)
             except Empty:
