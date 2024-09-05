@@ -4,7 +4,7 @@
   Author : Jacek 'Szumak' Kotlarski --<szumak@virthost.pl>
   Created: 2.09.2024, 15:50:29
   
-  Purpose: 
+  Purpose: Data models for motostat and spritmonitor dataset.
 """
 
 import re
@@ -75,7 +75,7 @@ class MotoStat(BDebug, BVerbose, BMiles):
         self.__time_update()
 
     def __repr__(self) -> str:
-        tmp = ""
+        tmp: str = ""
         for i, v in self._get_data(key=_Keys.DATA).items():  # type: ignore
             tmp += f"'{i}':{v},"
         return f"{self._c_name}({tmp})"
@@ -87,7 +87,7 @@ class MotoStat(BDebug, BVerbose, BMiles):
             cost_id: str = data["cost_id"]  # type: ignore
             fueling_id: str = data["fueling_id"]  # type: ignore
             date: str = data["date"]  # type: ignore
-            ts = Timestamp.from_string(date, "%Y-%m-%d")
+            ts: int = Timestamp.from_string(date, "%Y-%m-%d")
             ms: float = 0.0
             if len(cost_id) > 0:
                 ms = ts + float(f"{cost_id}") / 10000
@@ -356,7 +356,7 @@ class MotoStat(BDebug, BVerbose, BMiles):
 class SpritMonitor(BDebug, BVerbose):
     """SpritMonitor converter class.
 
-    ### Fuelings CSV
+    ### Fueling CSV
         Date: Format DD.MM.YYYY (e.g., 23.02.2010)
         Odometer, distance, quantity, total price: Numeric without thousands separator
         Currency: Standard abbreviation (e.g., EUR, USD)
@@ -430,7 +430,7 @@ class SpritMonitor(BDebug, BVerbose):
             self.__add_fueling(item)
 
     def __repr__(self) -> str:
-        tmp = ""
+        tmp: str = ""
         for i, v in self._get_data(key=_Keys.DATA).items():  # type: ignore
             tmp += f"'{i}':{v},"
         return f"{self._c_name}({tmp})"
@@ -441,10 +441,10 @@ class SpritMonitor(BDebug, BVerbose):
             key=_Keys.DATA,
         )  # type: ignore
         # "Date",
-        date_tmp = datetime.fromtimestamp(item.date)
+        date_tmp: datetime = datetime.fromtimestamp(item.date)
         data["Date"] = f"{date_tmp.day:02d}.{date_tmp.month:02d}.{date_tmp.year}"
         # "Odometer",
-        tmp = item.odometer
+        tmp: str = item.odometer
         if tmp == "0":
             tmp = "0,00"
         else:
@@ -477,7 +477,7 @@ class SpritMonitor(BDebug, BVerbose):
 
         # "Roads",
         # Roads: Sum of 2=motor-way, 4=city, 8=country roads (e.g., motor-way and country roads: 10)
-        count = 0
+        count: int = 0
         if float(item.route_city) > 0:
             count += 4
         if float(item.route_motorway) > 0:
@@ -543,8 +543,8 @@ class SpritMonitor(BDebug, BVerbose):
         data["Note"] = f'"{item.notes}"'
         # "Consumption",
         if float(item.trip_odometer) > 0:
-            tmp = float(item.quantity) * 100 / float(item.trip_odometer)
-            data["Consumption"] = f"{tmp:.2f}".replace(".", ",")
+            tmp2: float = float(item.quantity) * 100 / float(item.trip_odometer)
+            data["Consumption"] = f"{tmp2:.2f}".replace(".", ",")
 
         # "BC-Consumption",
         # "BC-Quantity",
@@ -591,7 +591,7 @@ class SpritMonitor(BDebug, BVerbose):
         date_tmp: datetime = datetime.fromtimestamp(item.date)
         data["Date"] = f"{date_tmp.day:02d}.{date_tmp.month:02d}.{date_tmp.year}"
         # "Odometer",
-        tmp = item.odometer
+        tmp: str = item.odometer
         if tmp == "0":
             tmp = "0,00"
         else:
