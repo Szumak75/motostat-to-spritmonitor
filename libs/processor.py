@@ -108,6 +108,7 @@ class CsvProcessor(Thread, ThBaseObject, BLogs, BStop, BMiles, BVerbose, BDebug,
 
         # processing data
         if data:
+            self.logs.message_info = f"Found {len(data)} records from motostat."
             for item in sorted(data, reverse=True):
                 if item.cost_id:
                     sprit_costs.append(SpritMonitor(item))
@@ -115,7 +116,14 @@ class CsvProcessor(Thread, ThBaseObject, BLogs, BStop, BMiles, BVerbose, BDebug,
                     sprit_fuels.append(SpritMonitor(item))
             self.__write_costs(sprit_costs)
             self.__write_fuels(sprit_fuels)
-
+            if sprit_costs:
+                self.logs.message_info = (
+                    f"{len(sprit_costs)} cost records saved for spritmonitor."
+                )
+            if sprit_fuels:
+                self.logs.message_info = (
+                    f"{len(sprit_fuels)} fuels records saved for spritmonitor."
+                )
         # exit
         if self.debug:
             self.logs.message_debug = "stopped."
