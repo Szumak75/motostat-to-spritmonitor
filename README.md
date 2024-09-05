@@ -6,8 +6,8 @@ A project for converting csv files from https://www.motostat.pl to csv files in 
 
 - UNIX/Linux
 - Python3.11
-- virtualenv module
-- pip module
+- Python virtualenv module
+- Python pip module
 - git
 
 ## Installation
