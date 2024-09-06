@@ -11,7 +11,7 @@ import sys
 
 from typing import List, Dict
 
-from jsktoolbox.libs.base_data import BData
+from jsktoolbox.basetool.data import BData
 from jsktoolbox.attribtool import ReadOnlyClass
 from jsktoolbox.logstool.logs import LoggerClient, ThLoggerProcessor
 

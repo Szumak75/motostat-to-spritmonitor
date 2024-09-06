@@ -15,8 +15,8 @@ from queue import Queue, Empty
 
 from jsktoolbox.attribtool import ReadOnlyClass
 from jsktoolbox.logstool.logs import LoggerClient, LoggerQueue
-from jsktoolbox.libs.base_th import ThBaseObject
-from jsktoolbox.libs.system import PathChecker
+from jsktoolbox.basetool.threads import ThBaseObject
+from jsktoolbox.systemtool import PathChecker
 
 from libs.base import BDebug, BDir, BMiles, BVerbose, BLogs, BStop
 from libs.model import MotoStat, SpritMonitor

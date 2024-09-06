@@ -8,7 +8,7 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.11"
-jsktoolbox = "^1.0.18"
+jsktoolbox = "1.0.19"
 
 [tool.poetry.group.dev.dependencies]
 black = "^24.8.0"
